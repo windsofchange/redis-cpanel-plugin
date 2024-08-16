@@ -4,7 +4,7 @@ A cPanel Plugin that empowers individual cPanel users to control their own Redis
 
 # Key Features:
 
-![alt Plugin Feature Image](https://github.com/atikrahmanbd/redis-cpanel-plugin/blob/main/Redis_cPanel_Plugin_By_Atik.gif?raw=true)
+![alt Plugin Feature Image](https://github.com/windsofchange/redis-cpanel-plugin/blob/main/Redis_cPanel_Plugin_By_Atik.gif?raw=true)
 
 **Individual Control:** Each cPanel user can independently start or stop their own Redis instance.  
 **Enhanced Security:** Every Redis instance comes with unique authentication credentials to prevent unauthorized access.  
@@ -27,7 +27,7 @@ To install the plugin, follow these steps:
 2. Clone the repository:
 
 ```
-git clone https://github.com/atikrahmanbd/redis-cpanel-plugin.git
+git clone https://github.com/windsofchange/redis-cpanel-plugin.git
 ```
 
 3. As root, do the following:
