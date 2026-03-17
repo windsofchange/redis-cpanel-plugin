@@ -40,6 +40,11 @@ class RedisManager
     private $userRedisDir;
     private $pidFile;
     private $socketFile;
+
+    /** Allowed maxmemory values in MB: 63 MB default, then 32 MB increments to 512 MB */
+    public static $MEMORY_OPTIONS_MB = [63, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
+    public static $MEMORY_DEFAULT_MB = 63;
+
     public  $homeDir;
     public  $username;
     public  $userdetails;
@@ -165,7 +170,7 @@ class RedisManager
                 "dir {$this->userRedisDir}",
                 "pidfile {$this->pidFile}",
                 "",
-                "maxmemory 512mb",
+                "maxmemory " . self::$MEMORY_DEFAULT_MB . "mb",
                 "maxmemory-policy allkeys-lru",
                 "",
                 "databases 16",
@@ -289,6 +294,50 @@ REDIS_PORT={$port}
 ENV
             ,
         ];
+    }
+
+    /**
+     * Update maxmemory to $mb megabytes.
+     * - Validates against the allowed options list.
+     * - Rewrites the config file so the new value persists across restarts.
+     * - Hot-applies via CONFIG SET if the instance is currently running.
+     *
+     * @param int $mb Desired memory in MB (must be in self::$MEMORY_OPTIONS_MB)
+     * @throws Exception on invalid value or CLI failure
+     */
+    public function updateMaxMemory($mb)
+    {
+        $mb = (int)$mb;
+        if (!in_array($mb, self::$MEMORY_OPTIONS_MB, true)) {
+            throw new Exception("Invalid memory value: {$mb} MB. Allowed: " . implode(', ', self::$MEMORY_OPTIONS_MB));
+        }
+
+        if (!file_exists($this->configFile)) {
+            throw new Exception("Redis config not found — start the instance first.");
+        }
+
+        // Rewrite maxmemory line in config file
+        $conf = file_get_contents($this->configFile);
+        $conf = preg_replace('/^maxmemory\s+\S+/m', "maxmemory {$mb}mb", $conf);
+        file_put_contents($this->configFile, $conf);
+        chmod($this->configFile, 0600);
+
+        $this->log("UPDATED MAXMEMORY TO {$mb}mb FOR {$this->username}");
+
+        // Hot-apply to running instance via redis-cli / valkey-cli
+        $status = $this->getStatus();
+        if ($status['running'] && $status['port']) {
+            $cli      = str_replace('-server', '-cli', $this->redisServer);
+            $port     = escapeshellarg($status['port']);
+            $password = escapeshellarg($status['password']);
+            $bytes    = $mb * 1024 * 1024;
+
+            $out = shell_exec(
+                escapeshellarg($cli)
+                . " -p {$port} -a {$password} CONFIG SET maxmemory {$bytes} 2>&1"
+            );
+            $this->log("CONFIG SET maxmemory output: " . trim($out ?? ''));
+        }
     }
 
     public function startRedis()

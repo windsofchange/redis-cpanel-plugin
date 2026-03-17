@@ -18,7 +18,7 @@ try {
     $action = $_POST['action'] ?? 'status';
 
     // Mutating actions require POST + valid CSRF token
-    if (in_array($action, ['start', 'stop', 'reset'], true)) {
+    if (in_array($action, ['start', 'stop', 'reset', 'update_memory'], true)) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             throw new Exception("Method not allowed.");
         }
@@ -37,15 +37,21 @@ try {
             case 'reset':
                 $redisManager->resetRedis();
                 break;
+            case 'update_memory':
+                $mb = isset($_POST['memory_mb']) ? (int)$_POST['memory_mb'] : 0;
+                $redisManager->updateMaxMemory($mb);
+                break;
         }
         header("Location: index.live.php");
         exit;
     }
 
     // ---- Read-only status ----
-    $status      = $redisManager->getStatus();
-    $connInfo    = $status['running'] ? $redisManager->getConnectionInfo() : [];
-    $username    = $redisManager->username;
+    $status        = $redisManager->getStatus();
+    $connInfo      = $status['running'] ? $redisManager->getConnectionInfo() : [];
+    $username      = $redisManager->username;
+    $memoryOptions = RedisManager::$MEMORY_OPTIONS_MB;
+    $memoryDefault = RedisManager::$MEMORY_DEFAULT_MB;
 
     $isRunning   = $status['running'];
     $isConfigured = $status['configured'];
@@ -138,6 +144,42 @@ try {
                 </div>
             </div>
         </div>
+
+        <?php if ($isRunning || $isConfigured) : ?>
+        <!-- Memory limit selector -->
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="header-section">
+                    <h4>&#129504; Memory Limit</h4>
+                </div>
+                <?php
+                    // Current maxmemory from config, normalised to int MB
+                    $currentMem = preg_replace('/[^0-9]/', '', $status['maxmemory']);
+                    $currentMem = $currentMem ? (int)$currentMem : $memoryDefault;
+                ?>
+                <p style="margin-top:12px">
+                    Current limit: <strong><?= (int)$currentMem ?> MB</strong>
+                    &nbsp;·&nbsp; Default: <?= $memoryDefault ?> MB
+                    &nbsp;·&nbsp; Eviction policy: <code>allkeys-lru</code>
+                </p>
+                <form method="post" style="margin-top:10px;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="action" value="update_memory">
+                    <div class="form-inline">
+                        <label for="memory_mb" style="font-weight:bold; white-space:nowrap;">Set limit:</label>
+                        <select name="memory_mb" id="memory_mb" class="form-control-select">
+                            <?php foreach ($memoryOptions as $opt) : ?>
+                                <option value="<?= $opt ?>" <?= $opt === $currentMem ? 'selected' : '' ?>>
+                                    <?= $opt ?> MB<?= $opt === $memoryDefault ? ' (default)' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button class="btn btn-primary" type="submit">Apply</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php if ($isRunning && !empty($connInfo)) : ?>
         <!-- Connection snippets -->

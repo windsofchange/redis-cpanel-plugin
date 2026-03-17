@@ -70,6 +70,18 @@ body {
 .btn-warning { background-color: #ffc107; color: #212529; }
 .btn-copy    { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; }
 .btn-copy:hover { background-color: #dee2e6; }
+.btn-primary { background-color: #007bff; color: #fff; }
+.btn-primary:hover { background-color: #0069d9; }
+
+/* Memory selector */
+.form-control-select {
+  padding: 6px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #fff;
+  min-width: 160px;
+}
 
 hr {
   border: 0;
